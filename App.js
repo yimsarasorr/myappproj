@@ -37,7 +37,6 @@ import UploadSlipScreen from './screen/UploadSlipScreen';
 import NewServices from './screen/NewServices';
 import AdminScreen from './screen/AdminScreen';
 import AddPromotion from './screen/AddPromotion';
-import PromotionList from './screen/PromotionList';
 import EditPromotion from './screen/EditPromotion';
 import AddScreen from './screen/AddScreen';
 import NotificationScreen from './screen/NotificationScreen';
@@ -52,6 +51,11 @@ import BlogList from './screen/BlogList';
 import SlipDetail from './screen/SlipDetail';
 import AdminNoti from './screen/AdminNoti';
 import CampaignReportScreen from './screen/CampaignReportScreen';
+import EditBlog from './screen/EditBlog';
+import EditService from './screen/EditService';
+import EditUserScreen from './screen/EditUserScreen';
+import AddServices from './screen/AddServices';
+import AddPromotionScreen from './screen/AddPromotionScreen';
 
 // Create navigators
 const Stack = createStackNavigator();
@@ -286,12 +290,11 @@ const AdminStackNavigator = ({ user }) => (
     <Stack.Screen name="AdminScreen" component={AdminScreen} options={{ headerShown: false }} />
    
     {/* Other Admin Screens */}
-    <Stack.Screen name="AddPromotion" component={AddPromotion} />
-    <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} />
-    <Stack.Screen name="PromotionList" component={PromotionList} />
+    <Stack.Screen name="AddPromotionScreen" component={AddPromotionScreen} />
     <Stack.Screen name="EditPromotion" component={EditPromotion} />
     <Stack.Screen name="AddScreen" component={AddScreen} />
     <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+    <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} />
     <Stack.Screen name="GeneralUserQuantityScreen" component={GeneralUserQuantityScreen} />
     <Stack.Screen name="EntrepreneurQuantityScreen" component={EntrepreneurQuantityScreen} />
     <Stack.Screen name="ServicesQuantityScreen" component={ServicesQuantityScreen} />
@@ -299,12 +302,14 @@ const AdminStackNavigator = ({ user }) => (
     <Stack.Screen name="PromotionQuantityScreen" component={PromotionQuantityScreen} />
     <Stack.Screen name="AddBlog" component={AddBlog} />
     <Stack.Screen name="BlogList" component={BlogList} />
-    <Stack.Screen name="AddServices" component={BlogList} />
-    <Stack.Screen name="CampaignReportScreen" component={CampaignReportScreen} />
     <Stack.Screen name="SlipDetail" component={SlipDetail} />
     <Stack.Screen name="AdminNoti" component={AdminNoti} />
-
-   
+    <Stack.Screen name="CampaignReportScreen" component={CampaignReportScreen} />
+    <Stack.Screen name="EditBlog" component={EditBlog} />
+    <Stack.Screen name="EditService" component={EditService} />
+    <Stack.Screen name="EditUserScreen" component={EditUserScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AddServices" component={AddServices} />
+    <Stack.Screen name="AddMapScreen" component={AddMapScreen} />
   </Stack.Navigator>
 );
 
