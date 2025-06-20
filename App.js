@@ -218,6 +218,7 @@ const EntrepreneurTabs = ({ user, onLogout }) => (
       name="CampaignsTab"
       component={CampaignScreen}
       options={{ title: 'Campaigns' }}
+      initialParams={{}}
     />
   </Tab.Navigator>
 );

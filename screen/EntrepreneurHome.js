@@ -29,7 +29,7 @@ const EntrepreneurHome = () => {
         }
 
         const servicesRef = collection(FIREBASE_DB, 'Services');
-        const q = query(servicesRef, where('entrepreneurId', '==', user.uid));
+        const q = query(servicesRef, where('EntrepreneurId', '==', user.uid));
         const querySnapshot = await getDocs(q);
         const servicesData = querySnapshot.docs.map(doc => ({
           id: doc.id,
