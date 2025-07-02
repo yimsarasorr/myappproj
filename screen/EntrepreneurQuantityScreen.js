@@ -36,7 +36,7 @@ export default function EntrepreneurQuantityScreen() {
           // Fetch services
           const servicesQuery = query(
             collection(FIREBASE_DB, 'Services'),
-            where('entrepreneurId', '==', entrepreneur.id)
+            where('EntrepreneurId', '==', entrepreneur.id)
           );
           const servicesSnap = await getDocs(servicesQuery);
           const services = servicesSnap.docs.map(doc => ({
@@ -47,7 +47,7 @@ export default function EntrepreneurQuantityScreen() {
           // Fetch campaigns
           const campaignsQuery = query(
             collection(FIREBASE_DB, 'CampaignSubscriptions'),
-            where('entrepreneurId', '==', entrepreneur.id)
+            where('EntrepreneurId', '==', entrepreneur.id)
           );
           const campaignsSnap = await getDocs(campaignsQuery);
           const campaigns = campaignsSnap.docs.map(doc => ({
@@ -301,4 +301,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 3,
   }
-}); 
+});
