@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,21 @@ import {
   ScrollView,
   Image,
   Alert,
-  ActivityIndicator
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from './AuthContext';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { FIREBASE_DB, FIREBASE_AUTH } from './FirebaseConfig';
-import { Modal, FlatList } from 'react-native';
+  ActivityIndicator,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "./AuthContext";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { FIREBASE_DB, FIREBASE_AUTH } from "./FirebaseConfig";
+import { Modal, FlatList } from "react-native";
 
 const CampaignScreen = ({ route }) => {
   const params = route?.params || {};
@@ -33,18 +40,24 @@ const CampaignScreen = ({ route }) => {
     const fetchUserServices = async () => {
       if (!user) return;
       const q = query(
-        collection(FIREBASE_DB, 'Services'),
-        where('EntrepreneurId', '==', user.uid)
+        collection(FIREBASE_DB, "Services"),
+        where("EntrepreneurId", "==", user.uid)
       );
       const querySnapshot = await getDocs(q);
-      const userServices = querySnapshot.docs.map(doc => ({
+      const userServices = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setServices(userServices);
 
-      if (navigation.getState().routes[navigation.getState().index].params?.service) {
-        setSelectedService(navigation.getState().routes[navigation.getState().index].params.service);
+      if (
+        navigation.getState().routes[navigation.getState().index].params
+          ?.service
+      ) {
+        setSelectedService(
+          navigation.getState().routes[navigation.getState().index].params
+            .service
+        );
       } else {
         setSelectedService(userServices[0]);
       }
@@ -55,18 +68,54 @@ const CampaignScreen = ({ route }) => {
 
   useEffect(() => {
     const fetchCampaigns = async () => {
+      if (!serviceId) {
+        setCampaigns([]);
+        setLoading(false);
+        return;
+      }
       try {
-        const campaignsRef = collection(FIREBASE_DB, 'Campaigns');
-        const q = query(campaignsRef, where('serviceId', '==', serviceId));
+        const campaignsRef = collection(FIREBASE_DB, "Campaigns");
+        const q = query(campaignsRef, where("serviceId", "==", serviceId));
         const querySnapshot = await getDocs(q);
-        const campaignsData = querySnapshot.docs.map(doc => ({
+        const campaignsData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
         setCampaigns(campaignsData);
+
+        if (querySnapshot.empty) {
+          setCampaigns([
+            {
+              id: "mock1",
+              stars: 1,
+              price: 500,
+              duration: "1 Month",
+              days: 30,
+              recommended: false,
+            },
+            {
+              id: "mock2",
+              stars: 3,
+              price: 1200,
+              duration: "3 Month",
+              days: 90,
+              recommended: true,
+            },
+            {
+              id: "mock3",
+              stars: 5,
+              price: 2500,
+              duration: "6 Month",
+              days: 180,
+              recommended: false,
+            },
+          ]);
+          setLoading(false);
+          return;
+        }
       } catch (error) {
-        console.error('Error fetching campaigns:', error);
-        Alert.alert('Error', 'Failed to load campaigns');
+        console.error("Error fetching campaigns:", error);
+        Alert.alert("Error", "Failed to load campaigns");
       } finally {
         setLoading(false);
       }
@@ -79,7 +128,7 @@ const CampaignScreen = ({ route }) => {
     try {
       const user = FIREBASE_AUTH.currentUser;
       if (!user) {
-        Alert.alert('Error', 'Please login to proceed with payment');
+        Alert.alert("Error", "Please login to proceed with payment");
         return;
       }
 
@@ -88,15 +137,18 @@ const CampaignScreen = ({ route }) => {
         serviceId,
         campaignId: campaign.id,
         amount: campaign.price,
-        status: 'pending',
+        status: "pending",
         createdAt: serverTimestamp(),
       };
 
-      const paymentRef = await addDoc(collection(FIREBASE_DB, 'Payments'), paymentData);
-      navigation.navigate('Payment', { paymentId: paymentRef.id });
+      const paymentRef = await addDoc(
+        collection(FIREBASE_DB, "Payments"),
+        paymentData
+      );
+      navigation.navigate("Payment", { paymentId: paymentRef.id });
     } catch (error) {
-      console.error('Error creating payment:', error);
-      Alert.alert('Error', 'Failed to process payment');
+      console.error("Error creating payment:", error);
+      Alert.alert("Error", "Failed to process payment");
     }
   };
 
@@ -110,8 +162,8 @@ const CampaignScreen = ({ route }) => {
 
   if (!serviceId) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', fontSize: 16 }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "red", fontSize: 16 }}>
           Please select a service from "My Services" before viewing campaigns.
         </Text>
       </View>
@@ -122,7 +174,10 @@ const CampaignScreen = ({ route }) => {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Feather name="chevron-left" size={40} color="white" />
         </TouchableOpacity>
         {/*<Image source={require('../assets/logo-removebg.png')} style={styles.logo} />*/}
@@ -137,9 +192,11 @@ const CampaignScreen = ({ route }) => {
           style={styles.tabButtonDisabled}
           onPress={() => {
             if (selectedService) {
-              navigation.navigate('CampaignReportScreen', { serviceId: selectedService.id });
+              navigation.navigate("CampaignReportScreen", {
+                serviceId: selectedService.id,
+              });
             } else {
-              Alert.alert('กรุณาเลือกบริการก่อนดูรายงาน');
+              Alert.alert("กรุณาเลือกบริการก่อนดูรายงาน");
             }
           }}
         >
@@ -151,7 +208,9 @@ const CampaignScreen = ({ route }) => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Campaign Boost Your Service</Text>
         <Text style={styles.cardText}>
-          "Increase visibility and attract more customers! Join our promotional campaign to get your service featured and enjoy exclusive benefits that help your business grow!" 🚀
+          "Increase visibility and attract more customers! Join our promotional
+          campaign to get your service featured and enjoy exclusive benefits
+          that help your business grow!" 🚀
         </Text>
       </View>
 
@@ -160,9 +219,8 @@ const CampaignScreen = ({ route }) => {
         style={styles.serviceCard}
         onPress={() => setModalVisible(true)}
       >
-
         {selectedService ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Image
               source={{ uri: selectedService.image }}
               style={styles.serviceImage}
@@ -173,10 +231,13 @@ const CampaignScreen = ({ route }) => {
                 📍 {selectedService.location}
               </Text>
               <Text style={styles.serviceDetail}>
-                🕒 {selectedService.operatingHours?.[0]?.day || '-'} {selectedService.operatingHours?.[0]?.openTime || ''}–{selectedService.operatingHours?.[0]?.closeTime || ''}
+                🕒 {selectedService.operatingHours?.[0]?.day || "-"}{" "}
+                {selectedService.operatingHours?.[0]?.openTime || ""}–
+                {selectedService.operatingHours?.[0]?.closeTime || ""}
               </Text>
               <Text style={styles.serviceRating}>
-                ⭐ {selectedService.rating || 0} / {selectedService.reviews || 0} Reviews
+                ⭐ {selectedService.rating || 0} /{" "}
+                {selectedService.reviews || 0} Reviews
               </Text>
             </View>
             <Feather name="chevron-right" size={20} color="#014737" />
@@ -189,56 +250,170 @@ const CampaignScreen = ({ route }) => {
       {/* Campaign Options */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Select a campaign</Text>
-        {campaigns.map(c => (
+        <Text style={{ color: "#555", marginBottom: 10 }}>
+          Monthly Recommended Service{"\n"}
+          <Text style={{ fontSize: 12, color: "#888" }}>
+            “Your service will be featured in the recommended category list and
+            displayed on the app's homepage”
+          </Text>
+        </Text>
+        {campaigns.map((c, idx) => (
           <TouchableOpacity
             key={c.id}
-            style={[styles.campaignOption, selectedCampaign?.id === c.id && styles.selectedOption, c.recommended && styles.recommendedOption]}
+            style={[
+              styles.campaignOption,
+              selectedCampaign?.id === c.id && styles.selectedOption,
+              selectedCampaign?.id === c.id && { backgroundColor: "#FFD600" },
+            ]}
             onPress={() => setSelectedCampaign(c)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.starText}>{'★'.repeat(c.stars)}</Text>
-            <View>
-              <Text style={styles.priceText}>{c.price.toLocaleString()} THB / {c.duration}</Text>
+            {/* ดาวแบบ custom */}
+            <View
+              style={{
+                width: 60,
+                alignItems: "flex-start",
+                justifyContent: "center",
+              }}
+            >
+              {idx === 0 && (
+                <Text style={{ fontSize: 32, color: "#FFD700", marginLeft: 8 }}>
+                  ★
+                </Text>
+              )}
+              {idx === 1 && (
+                <View>
+                  <Text
+                    style={{ fontSize: 22, color: "#FFD700", marginLeft: 8 }}
+                  >
+                    ★
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      marginTop: 2,
+                      marginLeft: 0,
+                    }}
+                  >
+                    <Text style={{ fontSize: 22, color: "#FFD700" }}>★</Text>
+                    <Text
+                      style={{ fontSize: 22, color: "#FFD700", marginLeft: 4 }}
+                    >
+                      ★
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {idx === 2 && (
+                <View>
+                  <Text
+                    style={{ fontSize: 18, color: "#FFD700", marginLeft: 24 }}
+                  >
+                    ★
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      marginTop: 2,
+                      marginLeft: 12,
+                    }}
+                  >
+                    <Text style={{ fontSize: 18, color: "#FFD700" }}>★</Text>
+                    <Text
+                      style={{ fontSize: 18, color: "#FFD700", marginLeft: 4 }}
+                    >
+                      ★
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginTop: 2 }}>
+                    <Text style={{ fontSize: 18, color: "#FFD700" }}>★</Text>
+                    <Text
+                      style={{ fontSize: 18, color: "#FFD700", marginLeft: 4 }}
+                    >
+                      ★
+                    </Text>
+                    <Text
+                      style={{ fontSize: 18, color: "#FFD700", marginLeft: 4 }}
+                    >
+                      ★
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            {/* ข้อความ */}
+            <View style={{ flex: 1, justifyContent: "center", marginLeft: 12 }}>
+              <Text style={styles.priceText}>
+                {c.price.toLocaleString()} THB / {c.duration}
+              </Text>
               <Text style={styles.daysText}>({c.days} days)</Text>
             </View>
-            {c.recommended && <Text style={styles.recommendBadge}>Recommend</Text>}
+            {/* Badge Recommend */}
+            {c.recommended && (
+              <View style={styles.recommendBadge}>
+                <Text
+                  style={{ color: "white", fontSize: 10, fontWeight: "bold" }}
+                >
+                  Recommend
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Payment Confirmation */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Payment & Subscription Confirmation</Text>
+        <Text style={styles.cardTitle}>
+          Payment & Subscription Confirmation
+        </Text>
         <Text style={styles.totalText}>
-          ฿ {selectedCampaign?.price?.toLocaleString() || '0'}
+          ฿ {selectedCampaign?.price?.toLocaleString() || "0"}
         </Text>
         <Text style={styles.durationText}>
-          Campaign {selectedCampaign?.price?.toLocaleString()} THB / {selectedCampaign?.duration || '-'}
+          {selectedCampaign
+            ? `Campaign ${selectedCampaign.price.toLocaleString()} THB / ${
+                selectedCampaign.duration
+              } (${selectedCampaign.days} days)`
+            : "Campaign -"}
         </Text>
-        <TouchableOpacity style={styles.purchaseButton} onPress={() => handlePayment(selectedCampaign)}>
-          <Text style={styles.purchaseText}>Proceed to Payment</Text>
+        <TouchableOpacity
+          style={styles.purchaseButton}
+          onPress={() => handlePayment(selectedCampaign)}
+          disabled={!selectedCampaign}
+        >
+          <Text style={styles.purchaseText}>Purchase</Text>
         </TouchableOpacity>
         <Text style={styles.footerNote}>
-          By proceeding, you agree to HalalWay promotional program, payment terms,
-          and campaign usage policy (service recommendation).
+          By proceeding, you agree to HalalWay promotional program, payment
+          terms, and campaign usage policy (service recommendation).
         </Text>
       </View>
 
       {/* Modal เลือกร้าน */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          <View style={{
-            backgroundColor: 'white',
-            width: '90%',
-            borderRadius: 12,
-            padding: 20,
-            maxHeight: '80%',
-          }}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16 }}>Select Your Services</Text>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              width: "90%",
+              borderRadius: 12,
+              padding: 20,
+              maxHeight: "80%",
+            }}
+          >
+            <Text
+              style={{ fontSize: 16, fontWeight: "bold", marginBottom: 16 }}
+            >
+              Select Your Services
+            </Text>
             <FlatList
               data={services}
               keyExtractor={(item) => item.id}
@@ -249,18 +424,31 @@ const CampaignScreen = ({ route }) => {
                     setModalVisible(false);
                   }}
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                    flexDirection: "row",
+                    alignItems: "center",
                     marginBottom: 12,
                     padding: 10,
                     borderRadius: 10,
-                    backgroundColor: selectedService?.id === item.id ? '#E6F4F2' : '#f2f2f2',
+                    backgroundColor:
+                      selectedService?.id === item.id ? "#E6F4F2" : "#f2f2f2",
                   }}
                 >
-                  <Image source={{ uri: item.image }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+                  <Image
+                    source={{ uri: item.image }}
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: 8,
+                      marginRight: 12,
+                    }}
+                  />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: 'bold', color: '#014737' }}>{item.name}</Text>
-                    <Text style={{ fontSize: 12, color: '#666' }}>{item.location}</Text>
+                    <Text style={{ fontWeight: "bold", color: "#014737" }}>
+                      {item.name}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: "#666" }}>
+                      {item.location}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -269,113 +457,120 @@ const CampaignScreen = ({ route }) => {
               onPress={() => setModalVisible(false)}
               style={{
                 marginTop: 10,
-                backgroundColor: '#014737',
+                backgroundColor: "#014737",
                 paddingVertical: 10,
                 borderRadius: 8,
-                alignItems: 'center',
+                alignItems: "center",
               }}
             >
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>Done</Text>
+              <Text style={{ color: "white", fontWeight: "bold" }}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
     </ScrollView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#014737',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#014737",
     padding: 16,
   },
-  headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+  headerTitle: { color: "white", fontSize: 20, fontWeight: "bold" },
   logo: {
     width: 200,
     height: 120,
   },
-  tabContainer: { flexDirection: 'row', margin: 16 },
+  tabContainer: { flexDirection: "row", margin: 16 },
   tabButton: {
     flex: 1,
-    backgroundColor: '#014737',
+    backgroundColor: "#014737",
     padding: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 10,
   },
-  activeTab: { backgroundColor: '#014737' },
+  activeTab: { backgroundColor: "#014737" },
   tabButtonDisabled: {
     flex: 1,
-    backgroundColor: '#ccc',
+    backgroundColor: "#ccc",
     padding: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  tabTextActive: { color: 'white', fontWeight: 'bold' },
-  tabTextDisabled: { color: '#999' },
+  tabTextActive: { color: "white", fontWeight: "bold" },
+  tabTextDisabled: { color: "#999" },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  cardText: { color: '#555' },
-  cardSubText: { color: '#014737', fontWeight: '600' },
+  cardTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
+  cardText: { color: "#555" },
+  cardSubText: { color: "#014737", fontWeight: "600" },
   campaignOption: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 10,
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative',
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+    minHeight: 60,
   },
-  selectedOption: { borderWidth: 2, borderColor: '#014737' },
-  starText: { fontSize: 20, color: '#FFD700', marginRight: 12 },
-  priceText: { fontWeight: 'bold', fontSize: 16 },
-  daysText: { fontSize: 12, color: '#666' },
+  selectedOption: {
+    borderWidth: 2,
+    borderColor: "#FFD600",
+    backgroundColor: "#FFD600",
+  },
+  starText: { fontSize: 22, color: "#FFD700", letterSpacing: 2 },
+  priceText: { fontWeight: "bold", fontSize: 16, textAlign: "left" },
+  daysText: { fontSize: 12, color: "#666", textAlign: "left" },
   recommendBadge: {
-    position: 'absolute',
-    top: 0,
+    position: "absolute",
+    top: 10,
     right: 10,
-    backgroundColor: '#014737',
-    color: 'white',
-    fontSize: 10,
+    backgroundColor: "#014737",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  totalText: { fontSize: 22, fontWeight: 'bold', color: '#014737', marginTop: 8 },
-  durationText: { fontSize: 14, color: '#666', marginBottom: 12 },
+  totalText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#014737",
+    marginTop: 8,
+  },
+  durationText: { fontSize: 14, color: "#666", marginBottom: 12 },
   purchaseButton: {
-    backgroundColor: '#014737',
+    backgroundColor: "#014737",
     padding: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 10,
   },
-  purchaseText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  footerNote: { fontSize: 12, color: '#666', textAlign: 'center' },
+  purchaseText: { color: "white", fontWeight: "bold", fontSize: 16 },
+  footerNote: { fontSize: 12, color: "#666", textAlign: "center" },
   serviceCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
@@ -387,26 +582,26 @@ const styles = StyleSheet.create({
   },
   serviceName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#014737',
+    fontWeight: "bold",
+    color: "#014737",
   },
   serviceDetail: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   serviceRating: {
     fontSize: 12,
-    color: '#f39c12',
+    color: "#f39c12",
     marginTop: 2,
   },
   servicePlaceholder: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
