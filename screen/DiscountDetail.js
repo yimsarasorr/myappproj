@@ -10,9 +10,12 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { doc, runTransaction } from 'firebase/firestore';
+import { FIREBASE_DB } from './FirebaseConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +24,7 @@ const DiscountDetail = ({ route }) => {
   const { discount } = route.params;
 
   const [isUsed, setIsUsed] = useState(false);
+  const [remaining, setRemaining] = useState(discount.remaining);
 
   let expiryText = '';
   if (discount.validUntil) {
@@ -31,8 +35,27 @@ const DiscountDetail = ({ route }) => {
     expiryText = `Valid until ${date.toLocaleDateString()}`;
   }
 
-  const handleUseDiscount = () => {
-    setIsUsed(true);
+  // DEBUG
+  const debugInfo = JSON.stringify({ ...discount, remaining }, null, 2);
+
+  // คูปอง
+  const handleUseDiscount = async () => {
+    if (isUsed || remaining === 0) return;
+    try {
+      const promoRef = doc(FIREBASE_DB, 'promotions', discount.id);
+      await runTransaction(FIREBASE_DB, async (transaction) => {
+        const promoDoc = await transaction.get(promoRef);
+        if (!promoDoc.exists()) throw 'Promotion not found';
+        const current = promoDoc.data().remaining ?? 0;
+        if (current <= 0) throw 'Coupon limit reached';
+        transaction.update(promoRef, { remaining: current - 1 });
+        setRemaining(current - 1);
+      });
+      setIsUsed(true);
+      Alert.alert('Success', 'บันทึกคูปองสำเร็จ!');
+    } catch (e) {
+      Alert.alert('Error', e.toString());
+    }
   };
 
   return (
@@ -40,14 +63,16 @@ const DiscountDetail = ({ route }) => {
       <StatusBar barStyle="light-content" />
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          {discount.image ? (
+          {discount.shopImage ? (
             <Image
-              source={{ uri: discount.image }}
+              source={{ uri: discount.shopImage }}
               style={styles.image}
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.image, { backgroundColor: '#fff' }]} />
+            <View style={[styles.image, { backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }]}>
+              <Feather name="image" size={32} color="#ccc" />
+            </View>
           )}
           <TouchableOpacity
             style={styles.backButton}
@@ -60,8 +85,13 @@ const DiscountDetail = ({ route }) => {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.restaurantName}>{discount.name || 'Discount'}</Text>
-
+          <Text style={styles.restaurantName}>{discount.shopName || discount.name || 'Discount'}</Text>
+          {discount.shopDistance && discount.shopDistance !== '-' ? (
+            <View style={styles.distanceRow}>
+              <Feather name="map-pin" size={14} color="#014737" />
+              <Text style={styles.distanceText}>{discount.shopDistance}</Text>
+            </View>
+          ) : null}
           <View style={styles.discountInfo}>
             <Text style={styles.discountText}>
               Discount{' '}
@@ -78,18 +108,37 @@ const DiscountDetail = ({ route }) => {
             {discount.description ||
               'A discount code can only be used when booking a hotel room.'}
           </Text>
+
+          {/* DEBUG SECTION */}
+          <View style={styles.debugBox}>
+            <Text style={{ fontWeight: 'bold', color: '#c00' }}>DEBUG:</Text>
+            <Text style={{ fontSize: 12, color: '#333' }}>{debugInfo}</Text>
+          </View>
         </View>
       </ScrollView>
 
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.useButton, isUsed && styles.usedButton]}
+          style={[
+            styles.useButton,
+            isUsed && styles.usedButton,
+            remaining === 0 && styles.usedButton,
+          ]}
           onPress={handleUseDiscount}
           activeOpacity={0.8}
-          disabled={isUsed}
+          disabled={isUsed || remaining === 0}
         >
-          <Text style={[styles.useButtonText, isUsed && styles.usedButtonText]}>
-            {isUsed ? 'Discount Used' : 'Use Discount'}
+          <Text
+            style={[
+              styles.useButtonText,
+              (isUsed || remaining === 0) && styles.usedButtonText,
+            ]}
+          >
+            {remaining === 0
+              ? 'Coupon Limit Reached'
+              : isUsed
+              ? 'Discount Used'
+              : 'Use Discount'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -148,6 +197,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#063c2f',
     marginBottom: 10,
+  },
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 5,
+  },
+  distanceText: {
+    fontSize: 12,
+    color: '#014737',
+    fontWeight: '500',
   },
   discountInfo: {
     borderBottomWidth: 1,
@@ -210,6 +270,12 @@ const styles = StyleSheet.create({
   },
   usedButtonText: {
     color: '#fff',
+  },
+  debugBox: {
+    marginTop: 18,
+    backgroundColor: '#ffeaea',
+    borderRadius: 8,
+    padding: 10,
   },
 });
 

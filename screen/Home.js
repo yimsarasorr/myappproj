@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, SafeAreaView, ActivityIndicator 
 } from 'react-native';
@@ -47,6 +47,8 @@ const Home = () => {
   const [touristAttractions, setTouristAttractions] = useState([]);
   const [prayerPlaces, setPrayerPlaces] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
+  const [promotions, setPromotions] = useState([]);
+  const [promotionsWithService, setPromotionsWithService] = useState([]);
 
   function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     function deg2rad(deg) {
@@ -130,6 +132,23 @@ const Home = () => {
             return true;
           });
         }
+        const addDistanceToRecommends = (list) => {
+          if (!userLocation) return list;
+          return list.map(item => {
+            if (item.latitude && item.longitude) {
+              const distance = getDistanceFromLatLonInKm(
+                userLocation.latitude,
+                userLocation.longitude,
+                Number(item.latitude),
+                Number(item.longitude)
+              );
+              return { ...item, distance: `${distance.toFixed(2)} km`, _distanceValue: distance };
+            }
+            return { ...item, distance: '-', _distanceValue: Infinity };
+          });
+        };
+
+        recommendsWithService = addDistanceToRecommends(recommendsWithService);
         setRecommends(recommendsWithService);
 
         // Blog
@@ -174,10 +193,17 @@ const Home = () => {
             .sort((a, b) => a._distanceValue - b._distanceValue);
         };
 
+        recommendsWithService = addDistanceAndSort(recommendsWithService);
+        setRecommends(recommendsWithService);
+
         setMosques(prev => addDistanceAndSort(prev));
         setTouristAttractions(prev => addDistanceAndSort(prev));
         setPrayerPlaces(prev => addDistanceAndSort(prev));
 
+        // Promotions
+        const promotionsCollectionRef = collection(FIREBASE_DB, 'promotions');
+        const promotionsSnapshot = await getDocs(promotionsCollectionRef);
+        setPromotions(promotionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -187,6 +213,52 @@ const Home = () => {
 
     fetchData();
   }, [userLocation]);
+
+  useEffect(() => {
+    const fetchPromotionsWithService = async () => {
+      if (!promotions.length) {
+        setPromotionsWithService([]);
+        return;
+      }
+      const serviceIds = promotions.map(p => p.serviceId).filter(Boolean);
+      let servicesMap = {};
+      if (serviceIds.length > 0) {
+        const batchSize = 10;
+        for (let i = 0; i < serviceIds.length; i += batchSize) {
+          const batchIds = serviceIds.slice(i, i + batchSize);
+          const servicesQuery = query(
+            collection(FIREBASE_DB, 'Services'),
+            where('__name__', 'in', batchIds)
+          );
+          const servicesSnapshot = await getDocs(servicesQuery);
+          servicesSnapshot.docs.forEach(doc => {
+            servicesMap[doc.id] = { id: doc.id, ...doc.data() };
+          });
+        }
+      }
+      const list = promotions.map(promo => {
+        let service = promo.serviceId ? servicesMap[promo.serviceId] : null;
+        let distance = '-';
+        if (service && userLocation && service.latitude && service.longitude) {
+          const d = getDistanceFromLatLonInKm(
+            userLocation.latitude,
+            userLocation.longitude,
+            Number(service.latitude),
+            Number(service.longitude)
+          );
+          distance = `${d.toFixed(2)} km`;
+        }
+        return {
+          ...promo,
+          shopName: service?.name || '',
+          shopImage: service?.image || '',
+          shopDistance: distance,
+        };
+      });
+      setPromotionsWithService(list);
+    };
+    fetchPromotionsWithService();
+  }, [promotions, userLocation]);
 
   if (loading) {
     return (
@@ -322,7 +394,7 @@ const Home = () => {
                 entrepreneurId={recommend.EntrepreneurId}
                 name={recommend.name}
                 category={recommend.category}
-                location={recommend.location}
+                distance={recommend.distance}
                 image={recommend.image}
               />
             ))}
@@ -345,26 +417,24 @@ const Home = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Blog</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('BlogTab')}>
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
-          {blogs.map(blog => (
-            <BlogCard key={blog.id} {...blog} />
-          ))}
-          {/* <View style={styles.blogCard}>
-            <Image
-              source={{ uri: 'https://sparbd.org/wp-content/uploads/2024/12/When-is-Ramadan-in-2025.jpg' }}
-              style={styles.blogImage}
-            />
-            <View style={styles.blogContent}>
-              <View style={styles.blogTag}>
-                <Text style={styles.blogTagText}>Ramadan 2025</Text>
-              </View>
-              <Text style={styles.blogTitle}>A Complete Guide to Ramadan</Text>
-              <Text style={styles.blogDescription}>Learn about dates, traditions, and preparing for the holy month</Text>
-            </View>
-          </View> */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {blogs.map((blog, idx) => (
+              <BlogCard
+                key={blog.id}
+                {...blog}
+                style={[
+                  styles.blogCard,
+                  { width: 250, marginRight: 15 },
+                  idx === 0 && { marginLeft: 0 },
+                ]}
+                navigation={navigation}
+              />
+            ))}
+          </ScrollView>
         </View>
 
         {/* Mosque Section */}
@@ -372,7 +442,7 @@ const Home = () => {
           <Text style={styles.sectionTitle}>Mosque near you</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {mosques.map(mosque => (
-              <LocationCard key={mosque.id} {...mosque} />
+              <LocationCard key={mosque.id} {...mosque} navigation={navigation} />
             ))}
           </ScrollView>
         </View>
@@ -399,7 +469,7 @@ const Home = () => {
           <Text style={styles.sectionTitle}>Tourist attractions</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {touristAttractions.map(attraction => (
-              <LocationCard key={attraction.id} {...attraction} />
+              <LocationCard key={attraction.id} {...attraction} navigation={navigation} />
             ))}
           </ScrollView>
         </View>
@@ -429,7 +499,7 @@ const Home = () => {
           <Text style={styles.sectionTitle}>Places of prayer near you</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {prayerPlaces.map(place => (
-              <LocationCard key={place.id} {...place} />
+              <LocationCard key={place.id} {...place} navigation={navigation} />
             ))}
           </ScrollView>
         </View>
@@ -455,27 +525,35 @@ const Home = () => {
 
         {/* Discounts and Benefits */}
         <View style={[styles.section, styles.lastSection]}>
-          <Text style={styles.sectionTitle}>Discounts and benefits</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Discounts and benefits</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('DiscountTab')}>
+              <Text style={styles.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <PromotionCard 
-              discount="15%"
-              title="Minimum of 300 baht"
-              description="Discount when purchasing a minimum of 300 baht"
-              expiryDate="Valid until 15 Apr"
-          
-            />
-            <PromotionCard 
-              discount="₿80"
-              title="New User Bonus"
-              description="Special welcome discount"
-              expiryDate="Valid for 7 days"
-            />
-            <PromotionCard 
-              discount="50%"
-              title="Member special discount"
-              description="Special for member 1 mouth"
-              expiryDate="Valid for 7 days"
-            />
+            {promotionsWithService.map(promo => (
+              <PromotionCard
+                key={promo.id}
+                discount={
+                  promo.discount
+                    ? `${promo.discount}${typeof promo.discount === 'number' ? '%' : ''}`
+                    : ''
+                }
+                title={promo.title}
+                description={promo.description}
+                expiryDate={
+                  promo.validUntil
+                    ? `Valid until ${new Date(promo.validUntil.seconds * 1000).toLocaleDateString()}`
+                    : ''
+                }
+                shopName={promo.shopName}
+                shopImage={promo.shopImage}
+                shopDistance={promo.shopDistance}
+                navigation={navigation}
+                {...promo}
+              />
+            ))}
           </ScrollView>
         </View>
       </ScrollView>
@@ -519,24 +597,39 @@ const Home = () => {
 //       setDistance(dist);
 //     });
 //   }, []);
-  const LocationCard = ({ name, category, distance, image }) => (
-  <TouchableOpacity style={styles.locationCard} onPress={() => navigation.navigate("Detail")} >
-      <Image source={{ uri: image }} style={styles.locationImage} />
+  const LocationCard = ({ navigation, ...place }) => {
+  const handlePress = () => {
+    const sanitized = {
+      ...place,
+      latitude: place.latitude && !isNaN(Number(place.latitude)) ? Number(place.latitude) : undefined,
+      longitude: place.longitude && !isNaN(Number(place.longitude)) ? Number(place.longitude) : undefined,
+      image: place.image && typeof place.image === 'string' && place.image.trim() !== '' ? place.image : undefined,
+    };
+    navigation.navigate("Detail", { place: sanitized });
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.locationCard}
+      onPress={handlePress}
+    >
+      <Image source={{ uri: place.image }} style={styles.locationImage} />
       <View style={styles.locationContent}>
         <View style={styles.locationHeader}>
-          <Text style={styles.locationTitle} numberOfLines={2}>{name}</Text>
+          <Text style={styles.locationTitle} numberOfLines={2}>{place.name}</Text>
           <TouchableOpacity style={styles.heartButton}>
             <Feather name="heart" size={18} color="#666" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.locationType}>{category}</Text>
+        <Text style={styles.locationType}>{place.category}</Text>
         <View style={styles.locationFooter}>
           <Feather name="map-pin" size={14} color="#666" />
-          <Text style={styles.distanceText}>{distance}</Text>
+          <Text style={styles.distanceText}>{place.distance}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
+};
 
 const CategoryIcon = ({ title, emoji, onPress, isActive }) => (
   <TouchableOpacity style={[styles.categoryItem, isActive && styles.categoryItemActive]}onPress={onPress}>
@@ -547,9 +640,8 @@ const CategoryIcon = ({ title, emoji, onPress, isActive }) => (
   </TouchableOpacity>
 );
 
-const RecommendCard = ({ campaignId, serviceId, entrepreneurId, name, category, location, image }) => {
+const RecommendCard = ({ campaignId, serviceId, entrepreneurId, name, category, distance, image }) => {
   useEffect(() => {
-    console.log('Impression:', { campaignId, serviceId, entrepreneurId });
     updateCampaignReport({ campaignId, serviceId, entrepreneurId, type: 'impression' });
   }, []);
 
@@ -567,21 +659,37 @@ const RecommendCard = ({ campaignId, serviceId, entrepreneurId, name, category, 
             <Feather name="heart" size={18} color="#666" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.recommendCategory}>({category})</Text>
+        <Text style={styles.recommendCategory}>{category}</Text>
         <View style={styles.recommendLocation}>
           <Feather name="map-pin" size={14} color="#666" />
-          <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
+          <Text style={styles.locationText} numberOfLines={1}>{distance}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
-const BlogCard = ({ name, title, predescription, image }) => (
-  <TouchableOpacity style={styles.blogCard} onPress={() => navigation.navigate('BlogDetail')} >
+// const BlogCard = ({ name, title, predescription, image, style }) => (
+//   <TouchableOpacity style={style} onPress={() => navigation.navigate('BlogDetail')} >
+//     <Image source={{ uri: image }} style={styles.blogImage} />
+//     <View style={styles.blogContent}>
+//       <View style={styles.blogTag}>
+//         <Text style={styles.blogTagText}>{name}</Text>
+//       </View>
+//       <Text style={styles.blogTitle}>{title}</Text>
+//       <Text style={styles.blogDescription}>{predescription}</Text>
+//     </View>
+//   </TouchableOpacity>
+// );
+
+const BlogCard = ({ name, title, predescription, image, style, navigation, ...blog }) => (
+  <TouchableOpacity
+    style={style}
+    onPress={() => navigation.navigate('BlogDetail', { blog: { name, title, predescription, image, ...blog } })}
+  >
     <Image source={{ uri: image }} style={styles.blogImage} />
     <View style={styles.blogContent}>
       <View style={styles.blogTag}>
-          <Text style={styles.blogTagText}>{name}</Text>
+        <Text style={styles.blogTagText}>{name}</Text>
       </View>
       <Text style={styles.blogTitle}>{title}</Text>
       <Text style={styles.blogDescription}>{predescription}</Text>
@@ -603,15 +711,47 @@ const BlogCard = ({ name, title, predescription, image }) => (
 //   </TouchableOpacity>
 // );
 
-const PromotionCard = ({ discount, title, description, expiryDate }) => (
-  <TouchableOpacity style={styles.promotionCard}>
-    <View style={styles.promotionHeader}>
-      <Text style={styles.promotionDiscount}>{discount}</Text>
-      <Text style={styles.promotionOff}>OFF</Text>
+const PromotionCard = ({
+  discount,
+  title,
+  description,
+  expiryDate,
+  shopName,
+  shopImage,
+  shopDistance,
+  navigation,
+  ...promo
+}) => (
+  <TouchableOpacity
+    style={styles.promotionCardNew}
+    onPress={() => navigation.navigate('DiscountDetail', { discount: { discount, title, description, expiryDate, shopName, shopImage, shopDistance, ...promo } })}
+    activeOpacity={0.85}
+  >
+    {shopImage ? (
+      <Image source={{ uri: shopImage }} style={styles.promotionShopImage} />
+    ) : (
+      <View style={[styles.promotionShopImage, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+        <Feather name="image" size={32} color="#ccc" />
+      </View>
+    )}
+    <View style={styles.promotionContent}>
+      {shopName ? (
+        <Text style={styles.promotionShopName} numberOfLines={1}>{shopName}</Text>
+      ) : null}
+      {shopDistance && shopDistance !== '-' ? (
+        <View style={styles.promotionDistanceRow}>
+          <Feather name="map-pin" size={14} color="#014737" />
+          <Text style={styles.promotionDistanceText}>{shopDistance}</Text>
+        </View>
+      ) : null}
+      <View style={styles.promotionDiscountRow}>
+        <Text style={styles.promotionDiscountNew}>{discount}</Text>
+        <Text style={styles.promotionOff}>OFF</Text>
+      </View>
+      <Text style={styles.promotionTitleNew}>{title}</Text>
+      <Text style={styles.promotionDescriptionNew}>{description}</Text>
+      <Text style={styles.promotionExpiryNew}>{expiryDate}</Text>
     </View>
-    <Text style={styles.promotionTitle}>{title}</Text>
-    <Text style={styles.promotionDescription}>{description}</Text>
-    <Text style={styles.promotionExpiry}>{expiryDate}</Text>
   </TouchableOpacity>
 );
 
@@ -644,7 +784,7 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: 'row',
-    justifyContent: 'flex-end', // Change from 'space-between' to 'flex-end'
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 15,
   },
@@ -942,6 +1082,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -1092,6 +1234,26 @@ const styles = StyleSheet.create({
     color: 'white',
     opacity: 0.6,
   },
+  shopInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  shopImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  shopName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  shopDistance: {
+    fontSize: 12,
+    color: '#666',
+  },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1115,7 +1277,72 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: '#FDCB02',
-    fontWeight: 'bold',  }
+    fontWeight: 'bold',  },
+  promotionCardNew: {
+    width: 220,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    marginRight: 15,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  promotionShopImage: {
+    width: '100%',
+    height: 100,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+  },
+  promotionContent: {
+    padding: 12,
+  },
+  promotionShopName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#014737',
+    marginBottom: 2,
+  },
+  promotionDistanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 5,
+  },
+  promotionDistanceText: {
+    fontSize: 12,
+    color: '#014737',
+    fontWeight: '500',
+  },
+  promotionDiscountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 6,
+    gap: 5,
+  },
+  promotionDiscountNew: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FDCB02',
+    marginRight: 2,
+  },
+  promotionTitleNew: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#014737',
+    marginBottom: 4,
+  },
+  promotionDescriptionNew: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 4,
+  },
+  promotionExpiryNew: {
+    fontSize: 12,
+    color: '#999',
+  },
 });
 
 export default Home;

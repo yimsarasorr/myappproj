@@ -31,7 +31,7 @@ import { FIREBASE_DB } from './FirebaseConfig';
 const Search = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const initialCategory = route.params?.category || null;
+  const initialCategory = route.params?.category || "All";
   const [searchText, setSearchText] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("Near me");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);

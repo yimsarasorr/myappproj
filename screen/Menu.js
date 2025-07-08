@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -7,13 +7,29 @@ import {
     StyleSheet,
     SafeAreaView,
     Platform,
-    Alert
+    Alert,
+    BackHandler
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { FIREBASE_AUTH } from './FirebaseConfig';
+import { CommonActions } from '@react-navigation/native';
+import * as Updates from 'expo-updates';
 
 const Menu = ({ navigation }) => {
-    const [showConfirmation, setShowConfirmation] = useState(false);
     const [user, setUser] = useState(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const prevUser = useRef(user);
+
+    useEffect(() => {
+        const unsubscribe = FIREBASE_AUTH.onAuthStateChanged(setUser);
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+
+        };
+    }, []);
 
     const menuItems = [
         {
@@ -40,20 +56,18 @@ const Menu = ({ navigation }) => {
 
     const handleLogout = () => {
         setShowConfirmation(true);
-        // Implement logout logic here
-        // This might involve:
-        // - Clearing user token
-        // - Resetting navigation state
-        // - Navigating to login screen
-        navigation.navigate('Login');
     };
 
-    const confirmLogout = () => {
-        // Perform logout logic here
+    const confirmLogout = async () => {
         console.log('Logging out...');
         setShowConfirmation(false);
-        // Navigate to login screen or any other appropriate screen
-        navigation.navigate('Login');
+        await FIREBASE_AUTH.signOut();
+        
+        try {
+            await Updates.reloadAsync();
+        } catch (e) {
+            BackHandler.exitApp(); 
+        }
     };
 
     const cancelLogout = () => {
@@ -70,18 +84,11 @@ const Menu = ({ navigation }) => {
             ],
             { cancelable: true }
         );
-        // Implement account deletion logic here
-        // Show confirmation dialog
-        // Remove user data
-        // Navigate to login or welcome screen
-        //navigation.navigate('Login');
     };
 
     const deleteAccount = () => {
-        // Perform account deletion logic here
         console.log('Deleting account...');
-        // Navigate to appropriate screen after deletion
-        navigation.navigate('Login');
+        navigation.navigate('Login-email');
     };
 
 

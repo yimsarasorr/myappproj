@@ -3,7 +3,7 @@
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
@@ -65,6 +65,8 @@ const GeneralUserStack = createStackNavigator();
 const EntrepreneurStack = createStackNavigator();
 const GuestStack = createStackNavigator();
 
+const navigationRef = createNavigationContainerRef();
+
 // Auth navigator for login/register screens
 const AuthNavigator = () => (
   <AuthStack.Navigator
@@ -84,6 +86,7 @@ const AuthNavigator = () => (
 // Guest user tab navigator - allows access to limited features without login
 const GuestTabs = () => (
   <Tab.Navigator
+    initialRouteName="HomeTab"
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName;
@@ -122,6 +125,7 @@ const GuestTabs = () => (
 // Guest stack for non-logged in users
 const GuestStackNavigator = () => (
   <GuestStack.Navigator
+    initialRouteName="GuestTabs"
     screenOptions={{
       ...TransitionPresets.SlideFromRightIOS,
       headerStyle: { backgroundColor: '#063c2f' },
@@ -140,7 +144,7 @@ const GuestStackNavigator = () => (
     <GuestStack.Screen name="Register" component={Register} options={{ headerShown: false }} />
     <GuestStack.Screen name="Login-email" component={LoginEmail} options={{ headerShown: false }} />
     <GuestStack.Screen name="Login-phone" component={LoginPhone} options={{ headerShown: false }} />
-    <GuestStack.Screen name="Menu" component={Menu} options={{ headerShown: false }} />
+    <GuestStack.Screen name="Menu" component={Menu} options={{ headerShown: false, unmountOnBlur: true }} />
   </GuestStack.Navigator>
 );
 
@@ -344,6 +348,19 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = FIREBASE_AUTH.onAuthStateChanged(user => {
+      if (!user) {
+          navigationRef.current?.reset({
+              index: 0,
+              routes: [{ name: 'GuestTabs' }]
+          });
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.splashContainer}>
@@ -355,7 +372,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         {!user ? (
           <GuestStackNavigator />
         ) : role === "Admin" ? (
