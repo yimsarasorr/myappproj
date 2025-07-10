@@ -68,14 +68,14 @@ const CampaignScreen = ({ route }) => {
 
   useEffect(() => {
     const fetchCampaigns = async () => {
-      if (!serviceId) {
+      if (!selectedService) {
         setCampaigns([]);
         setLoading(false);
         return;
       }
       try {
         const campaignsRef = collection(FIREBASE_DB, "Campaigns");
-        const q = query(campaignsRef, where("serviceId", "==", serviceId));
+        const q = query(campaignsRef, where("serviceId", "==", selectedService.id));
         const querySnapshot = await getDocs(q);
         const campaignsData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -122,7 +122,7 @@ const CampaignScreen = ({ route }) => {
     };
 
     fetchCampaigns();
-  }, [serviceId]);
+  }, [selectedService]);
 
   const handlePayment = async (campaign) => {
     try {
@@ -156,16 +156,6 @@ const CampaignScreen = ({ route }) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#014737" />
-      </View>
-    );
-  }
-
-  if (!serviceId) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "red", fontSize: 16 }}>
-          Please select a service from "My Services" before viewing campaigns.
-        </Text>
       </View>
     );
   }

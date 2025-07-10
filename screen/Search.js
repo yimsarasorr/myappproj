@@ -557,16 +557,16 @@ const Search = () => {
         showsUserLocation={true}
         followsUserLocation={true}
         region={region}
-        onRegionChangeComplete={(newRegion) => {
-          if (
-            Math.abs(region.latitude - newRegion.latitude) > 0.00001 ||
-            Math.abs(region.longitude - newRegion.longitude) > 0.00001 ||
-            Math.abs(region.latitudeDelta - newRegion.latitudeDelta) > 0.00001 ||
-            Math.abs(region.longitudeDelta - newRegion.longitudeDelta) > 0.00001
-          ) {
-            setRegion(newRegion);
-          }
-        }}
+        // onRegionChangeComplete={(newRegion) => {
+        //   if (
+        //     Math.abs(region.latitude - newRegion.latitude) > 0.00001 ||
+        //     Math.abs(region.longitude - newRegion.longitude) > 0.00001 ||
+        //     Math.abs(region.latitudeDelta - newRegion.latitudeDelta) > 0.00001 ||
+        //     Math.abs(region.longitudeDelta - newRegion.longitudeDelta) > 0.00001
+        //   ) {
+        //     setRegion(newRegion);
+        //   }
+        // }}
       >
         {/* 📍 Marker สำหรับตำแหน่งปัจจุบัน */}
         {userLocation && (
